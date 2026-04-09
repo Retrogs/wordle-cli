@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 
+import random
 import sys
 
-TARGET = "CRANE"
+from words import WORDS
+
+TARGET = random.choice(WORDS)
 
 # ANSI escape codes
 GREEN_BG  = "\033[42m\033[30m"   # green bg, black text
 YELLOW_BG = "\033[43m\033[30m"   # yellow bg, black text
 GREY_BG   = "\033[100m\033[97m"  # dark grey bg, white text
+EMPTY_BG  = "\033[48;5;236m"     # dark cell for unused rows
 RESET     = "\033[0m"
 BOLD      = "\033[1m"
+
+EMPTY_ROW = " ".join(f"{EMPTY_BG}   {RESET}" for _ in range(5))
 
 STATUS_PRIORITY = {"green": 2, "yellow": 1, "grey": 0}
 
@@ -59,18 +65,15 @@ def print_used_letters(used):
 
 
 def main():
+    print("\033[2J\033[H", end="")
     print(f"\n{BOLD}WORDLE{RESET}  —  6 guesses to find the 5-letter word\n")
+    for _ in range(6):
+        print("  " + EMPTY_ROW)
 
     used_letters: dict[str, str] = {}
     history: list[str] = []
 
     for attempt in range(1, 7):
-        # Reprint previous guesses above the prompt on each turn
-        if history:
-            print()
-            for row in history:
-                print("  " + row)
-
         while True:
             try:
                 raw = input(f"\n  Guess {attempt}/6: ").strip().upper()
@@ -98,8 +101,8 @@ def main():
         # Clear screen and reprint everything cleanly
         print("\033[2J\033[H", end="")
         print(f"\n{BOLD}WORDLE{RESET}  —  6 guesses to find the 5-letter word\n")
-        for row in history:
-            print("  " + row)
+        for i in range(6):
+            print("  " + (history[i] if i < len(history) else EMPTY_ROW))
 
         print_used_letters(used_letters)
 
