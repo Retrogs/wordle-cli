@@ -3,6 +3,7 @@
 import random
 import sys
 
+import stats as st
 from words import WORDS
 
 TARGET = random.choice(WORDS)
@@ -90,13 +91,13 @@ def main():
             break
 
         feedback = get_feedback(raw, TARGET)
-        row_str = " ".join(tile(ch, st) for ch, st in feedback)
+        row_str = " ".join(tile(ch, status) for ch, status in feedback)
         history.append(row_str)
 
         # Update used-letter map, keeping best status per letter
-        for ch, st in feedback:
-            if ch not in used_letters or STATUS_PRIORITY[st] > STATUS_PRIORITY[used_letters[ch]]:
-                used_letters[ch] = st
+        for ch, status in feedback:
+            if ch not in used_letters or STATUS_PRIORITY[status] > STATUS_PRIORITY[used_letters[ch]]:
+                used_letters[ch] = status
 
         # Clear screen and reprint everything cleanly
         print("\033[2J\033[H", end="")
@@ -108,10 +109,18 @@ def main():
 
         if raw == TARGET:
             word = "guess" if attempt == 1 else "guesses"
-            print(f"  {BOLD}You got it in {attempt} {word}!{RESET}\n")
+            print(f"\n  {BOLD}You got it in {attempt} {word}!{RESET}\n")
+            game_stats = st.load()
+            st.record(game_stats, won=True, attempts=attempt)
+            st.save(game_stats)
+            st.display_result(game_stats, won=True, attempts=attempt)
             return
 
-    print(f"  {BOLD}Game over — the word was {TARGET}.{RESET}\n")
+    print(f"\n  {BOLD}Game over — the word was {TARGET}.{RESET}\n")
+    game_stats = st.load()
+    st.record(game_stats, won=False, attempts=0)
+    st.save(game_stats)
+    st.display_result(game_stats, won=False, attempts=0)
 
 
 if __name__ == "__main__":
