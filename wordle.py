@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
+import os
 import random
 import sys
-
-import os
 
 import stats as st
 from words import WORDS
@@ -53,6 +52,25 @@ def get_feedback(guess, target):
     return list(zip(list(guess), result))
 
 
+def check_hard_mode(guess, greens, yellows):
+    """Return an error string if the guess violates hard mode constraints, else None.
+
+    greens  — dict of {position: letter} that must be reused in the same slot.
+    yellows — dict of {letter: set_of_positions_it_was_seen_yellow} that must
+              appear somewhere (but not necessarily in those positions).
+    """
+    for pos, letter in greens.items():
+        if guess[pos] != letter:
+            ordinal = ["1st", "2nd", "3rd", "4th", "5th"][pos]
+            return f"  {ordinal} letter must be {letter}."
+
+    for letter in yellows:
+        if letter not in guess:
+            return f"  Guess must contain {letter}."
+
+    return None
+
+
 def tile(letter, status):
     bg = {"green": GREEN_BG, "yellow": YELLOW_BG, "grey": GREY_BG}[status]
     return f"{bg} {letter} {RESET}"
@@ -73,14 +91,36 @@ def print_used_letters(used):
     print()
 
 
+def ask_hard_mode():
+    while True:
+        try:
+            ans = input("  Hard mode? (y/n): ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            sys.exit(0)
+        if ans in ("y", "yes"):
+            return True
+        if ans in ("n", "no", ""):
+            return False
+
+
 def main():
     print("\033[2J\033[H", end="")
     print(f"\n{BOLD}WORDLE{RESET}  —  6 guesses to find the 5-letter word\n")
+
+    hard_mode = ask_hard_mode()
+
+    print("\033[2J\033[H", end="")
+    mode_label = f"  {BOLD}HARD MODE{RESET}" if hard_mode else ""
+    print(f"\n{BOLD}WORDLE{RESET}  —  6 guesses to find the 5-letter word{mode_label}\n")
     for _ in range(6):
         print("  " + EMPTY_ROW)
 
     used_letters: dict[str, str] = {}
     history: list[str] = []
+
+    # Hard mode constraint state
+    greens: dict[int, str] = {}        # position -> confirmed letter
+    yellows: dict[str, set[int]] = {}  # letter -> positions where it was yellow
 
     for attempt in range(1, 7):
         while True:
@@ -99,11 +139,23 @@ def main():
             if raw not in VALID_WORDS:
                 print("  Not in word list.")
                 continue
+            if hard_mode:
+                err = check_hard_mode(raw, greens, yellows)
+                if err:
+                    print(err)
+                    continue
             break
 
         feedback = get_feedback(raw, TARGET)
         row_str = " ".join(tile(ch, status) for ch, status in feedback)
         history.append(row_str)
+
+        # Update hard mode constraints from this guess
+        for i, (ch, status) in enumerate(feedback):
+            if status == "green":
+                greens[i] = ch
+            elif status == "yellow":
+                yellows.setdefault(ch, set()).add(i)
 
         # Update used-letter map, keeping best status per letter
         for ch, status in feedback:
@@ -112,7 +164,7 @@ def main():
 
         # Clear screen and reprint everything cleanly
         print("\033[2J\033[H", end="")
-        print(f"\n{BOLD}WORDLE{RESET}  —  6 guesses to find the 5-letter word\n")
+        print(f"\n{BOLD}WORDLE{RESET}  —  6 guesses to find the 5-letter word{mode_label}\n")
         for i in range(6):
             print("  " + (history[i] if i < len(history) else EMPTY_ROW))
 
