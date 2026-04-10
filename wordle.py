@@ -3,10 +3,18 @@
 import random
 import sys
 
+import os
+
 import stats as st
 from words import WORDS
 
 TARGET = random.choice(WORDS)
+
+_DICT_PATH = os.path.join(os.path.dirname(__file__), "valid_words.txt")
+with open(_DICT_PATH) as _f:
+    VALID_WORDS: set[str] = {line.strip() for line in _f if line.strip()}
+# Answers are valid guesses too, even if not in the dictionary file
+VALID_WORDS |= set(WORDS)
 
 # ANSI escape codes
 GREEN_BG  = "\033[42m\033[30m"   # green bg, black text
@@ -87,6 +95,9 @@ def main():
                 continue
             if not raw.isalpha():
                 print("  Letters only, please.")
+                continue
+            if raw not in VALID_WORDS:
+                print("  Not in word list.")
                 continue
             break
 
