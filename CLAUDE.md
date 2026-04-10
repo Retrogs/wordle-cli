@@ -25,6 +25,7 @@ The game prompts for hard mode at startup (no CLI flags). Use this command to ve
   - `fix/` prefix for bug fixes (e.g. `fix/input-validation`)
 - Commit messages must be present tense and descriptive (e.g. "Add color hint display" not "Added colors").
 - Use the GitHub MCP to create branches, commit, push, and open pull requests.
+- Always append a `Co-Authored-By: Claude Code <noreply@anthropic.com>` trailer to commit messages so AI contributions are credited using the GitHub-standard format.
 
 ## Pull Requests
 - PR descriptions must explain what changed and why.
