@@ -7,8 +7,6 @@ import sys
 import stats as st
 from words import WORDS
 
-TARGET = random.choice(WORDS)
-
 _DICT_PATH = os.path.join(os.path.dirname(__file__), "valid_words.txt")
 with open(_DICT_PATH) as _f:
     VALID_WORDS: set[str] = {line.strip() for line in _f if line.strip()}
@@ -103,87 +101,109 @@ def ask_hard_mode():
             return False
 
 
+def ask_play_again():
+    while True:
+        try:
+            ans = input("  Play again? (y/n): ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            return False
+        if ans in ("y", "yes"):
+            return True
+        if ans in ("n", "no", ""):
+            return False
+
+
 def main():
     print("\033[2J\033[H", end="")
     print(f"\n{BOLD}WORDLE{RESET}  —  6 guesses to find the 5-letter word\n")
 
     hard_mode = ask_hard_mode()
-
-    print("\033[2J\033[H", end="")
     mode_label = f"  {BOLD}HARD MODE{RESET}" if hard_mode else ""
-    print(f"\n{BOLD}WORDLE{RESET}  —  6 guesses to find the 5-letter word{mode_label}\n")
-    for _ in range(6):
-        print("  " + EMPTY_ROW)
 
-    used_letters: dict[str, str] = {}
-    history: list[str] = []
+    while True:
+        target = random.choice(WORDS)
 
-    # Hard mode constraint state
-    greens: dict[int, str] = {}        # position -> confirmed letter
-    yellows: dict[str, set[int]] = {}  # letter -> positions where it was yellow
-
-    for attempt in range(1, 7):
-        while True:
-            try:
-                raw = input(f"\n  Guess {attempt}/6: ").strip().upper()
-            except (EOFError, KeyboardInterrupt):
-                print("\n  Game aborted.")
-                sys.exit(0)
-
-            if len(raw) != 5:
-                print("  Must be exactly 5 letters.")
-                continue
-            if not raw.isalpha():
-                print("  Letters only, please.")
-                continue
-            if raw not in VALID_WORDS:
-                print("  Not in word list.")
-                continue
-            if hard_mode:
-                err = check_hard_mode(raw, greens, yellows)
-                if err:
-                    print(err)
-                    continue
-            break
-
-        feedback = get_feedback(raw, TARGET)
-        row_str = " ".join(tile(ch, status) for ch, status in feedback)
-        history.append(row_str)
-
-        # Update hard mode constraints from this guess
-        for i, (ch, status) in enumerate(feedback):
-            if status == "green":
-                greens[i] = ch
-            elif status == "yellow":
-                yellows.setdefault(ch, set()).add(i)
-
-        # Update used-letter map, keeping best status per letter
-        for ch, status in feedback:
-            if ch not in used_letters or STATUS_PRIORITY[status] > STATUS_PRIORITY[used_letters[ch]]:
-                used_letters[ch] = status
-
-        # Clear screen and reprint everything cleanly
         print("\033[2J\033[H", end="")
         print(f"\n{BOLD}WORDLE{RESET}  —  6 guesses to find the 5-letter word{mode_label}\n")
-        for i in range(6):
-            print("  " + (history[i] if i < len(history) else EMPTY_ROW))
+        for _ in range(6):
+            print("  " + EMPTY_ROW)
 
-        print_used_letters(used_letters)
+        used_letters: dict[str, str] = {}
+        history: list[str] = []
 
-        if raw == TARGET:
-            word = "guess" if attempt == 1 else "guesses"
-            print(f"\n  {BOLD}You got it in {attempt} {word}!{RESET}\n")
+        # Hard mode constraint state
+        greens: dict[int, str] = {}        # position -> confirmed letter
+        yellows: dict[str, set[int]] = {}  # letter -> positions where it was yellow
+
+        won = False
+        for attempt in range(1, 7):
+            while True:
+                try:
+                    raw = input(f"\n  Guess {attempt}/6: ").strip().upper()
+                except (EOFError, KeyboardInterrupt):
+                    print("\n  Game aborted.")
+                    sys.exit(0)
+
+                if len(raw) != 5:
+                    print("  Must be exactly 5 letters.")
+                    continue
+                if not raw.isalpha():
+                    print("  Letters only, please.")
+                    continue
+                if raw not in VALID_WORDS:
+                    print("  Not in word list.")
+                    continue
+                if hard_mode:
+                    err = check_hard_mode(raw, greens, yellows)
+                    if err:
+                        print(err)
+                        continue
+                break
+
+            feedback = get_feedback(raw, target)
+            row_str = " ".join(tile(ch, status) for ch, status in feedback)
+            history.append(row_str)
+
+            # Update hard mode constraints from this guess
+            for i, (ch, status) in enumerate(feedback):
+                if status == "green":
+                    greens[i] = ch
+                elif status == "yellow":
+                    yellows.setdefault(ch, set()).add(i)
+
+            # Update used-letter map, keeping best status per letter
+            for ch, status in feedback:
+                if ch not in used_letters or STATUS_PRIORITY[status] > STATUS_PRIORITY[used_letters[ch]]:
+                    used_letters[ch] = status
+
+            # Clear screen and reprint everything cleanly
+            print("\033[2J\033[H", end="")
+            print(f"\n{BOLD}WORDLE{RESET}  —  6 guesses to find the 5-letter word{mode_label}\n")
+            for i in range(6):
+                print("  " + (history[i] if i < len(history) else EMPTY_ROW))
+
+            print_used_letters(used_letters)
+
+            if raw == target:
+                word = "guess" if attempt == 1 else "guesses"
+                print(f"\n  {BOLD}You got it in {attempt} {word}!{RESET}\n")
+                game_stats = st.load()
+                st.record(game_stats, won=True, attempts=attempt)
+                st.save(game_stats)
+                st.display_result(game_stats, won=True, attempts=attempt)
+                won = True
+                break
+
+        if not won:
+            print(f"\n  {BOLD}Game over — the word was {target}.{RESET}\n")
             game_stats = st.load()
-            st.record(game_stats, won=True, attempts=attempt)
+            st.record(game_stats, won=False, attempts=0)
             st.save(game_stats)
-            st.display_result(game_stats, won=True, attempts=attempt)
-            return
+            st.display_result(game_stats, won=False, attempts=0)
 
-    print(f"\n  {BOLD}Game over — the word was {TARGET}.{RESET}\n")
-    game_stats = st.load()
-    st.record(game_stats, won=False, attempts=0)
-    st.save(game_stats)
-    st.display_result(game_stats, won=False, attempts=0)
+        if not ask_play_again():
+            print("\n  Thanks for playing!\n")
+            sys.exit(0)
 
 
 if __name__ == "__main__":
