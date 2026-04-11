@@ -143,14 +143,18 @@ def main():
         yellows: dict[str, set[int]] = {}  # letter -> positions where it was yellow
 
         won = False
+        forfeited = False
         for attempt in range(1, 7):
             while True:
                 try:
-                    raw = input(f"\n  Guess {attempt}/6: ").strip().upper()
+                    raw = input(f"\n  Guess {attempt}/6 (! to forfeit): ").strip().upper()
                 except (EOFError, KeyboardInterrupt):
                     print("\n  Game aborted.")
                     sys.exit(0)
 
+                if raw == "!":
+                    forfeited = True
+                    break
                 if len(raw) != 5:
                     print("  Must be exactly 5 letters.")
                     continue
@@ -165,6 +169,9 @@ def main():
                     if err:
                         print(err)
                         continue
+                break
+
+            if forfeited:
                 break
 
             feedback = get_feedback(raw, target)
@@ -202,7 +209,8 @@ def main():
                 break
 
         if not won:
-            print(f"\n  {BOLD}Game over — the word was {target}.{RESET}\n")
+            msg = "You forfeited" if forfeited else "Game over"
+            print(f"\n  {BOLD}{msg} — the word was {target}.{RESET}\n")
             game_stats = st.load()
             st.record(game_stats, won=False, attempts=0)
             st.save(game_stats)
