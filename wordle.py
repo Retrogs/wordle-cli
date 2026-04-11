@@ -120,8 +120,15 @@ def main():
     hard_mode = ask_hard_mode()
     mode_label = f"  {BOLD}HARD MODE{RESET}" if hard_mode else ""
 
+    used_words: set[str] = set()
+
     while True:
-        target = random.choice(WORDS)
+        remaining = [w for w in WORDS if w not in used_words]
+        if not remaining:
+            used_words.clear()
+            remaining = WORDS
+        target = random.choice(remaining)
+        used_words.add(target)
 
         print("\033[2J\033[H", end="")
         print(f"\n{BOLD}WORDLE{RESET}  —  6 guesses to find the 5-letter word{mode_label}\n")
